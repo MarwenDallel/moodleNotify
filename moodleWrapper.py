@@ -1,9 +1,9 @@
 #!python
 # -*- coding: utf-8 -*-
 
-import os, pickle, keyring, requests
-from urllib.parse import urljoin
+import os, json, pickle, keyring, requests
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse, urljoin, parse_qs
 from urllib3.exceptions import InsecureRequestWarning
 
 # Disable SSL warning due to a shitty ass SSL certificate configuration
@@ -13,7 +13,7 @@ class MoodleWrapper():
     def __init__(self, url):  
         self.url = url
         self.login_url = urljoin(url, "login/index.php")
-        self.overall_grades_url = urljoin(url, "grade/report/overview/index.php")
+        self.averages_url = urljoin(url, "grade/report/overview/index.php")
         self.headers = {
             "DNT": "1",
             "Connection": "keep-alive",
@@ -25,7 +25,10 @@ class MoodleWrapper():
         }
         self.session = requests.Session()
         self.session.headers.update(self.headers)
-        self.courses = {}
+        
+    def __get_url_parameter(self, url, parameter):
+        parsed = urlparse(url)
+        return parse_qs(parsed.query)[parameter]
 
     def __load_cookies(self):
         if os.path.exists('cookies'):
@@ -60,6 +63,7 @@ class MoodleWrapper():
             self.session.post(self.login_url, data=payload)
             self.__save_cookies()
 
+    # Shows all courses on the homepage
     def get_courses(self):
         home_page = self.session.get(self.url).content
         #home_page = BeautifulSoup(home_page, "html.parser").prettify()    
@@ -70,19 +74,33 @@ class MoodleWrapper():
                 course_name = a.text.strip()
                 courses[course_name] = a.get('href')
         return courses
+    
+    def get_grade_items(self, averages):
+        all_grades = averages.copy()
+        for course_name, value in all_grades.items(): 
+            grade_link = value['gradeLink']
+            grades = self.get_grades(grade_link)
+            all_grades[course_name]['gradeDetails'] = grades
+        return all_grades
 
-    def get_overall_grades(self):
-        overall_grades_page = self.session.get(self.overall_grades_url).content
-        soup = BeautifulSoup(overall_grades_page, "html.parser")
-        overall_grades = {}
+    def get_averages(self):
+        averages_page = self.session.get(self.averages_url).content
+        soup = BeautifulSoup(averages_page, "html.parser")
+        averages = {}
         for tr in soup.select("table[id=overview-grade] > tbody > tr[class='']"):
             a = tr.select_one("td > a")
             grade_link = a.get('href')
             course_name = a.text.strip()
             grade = tr.find("td", "cell c1").text.strip()
             rank = tr.find("td", "cell c2").text.strip()
-            overall_grades[course_name] = {"grade": grade, "rank": rank, "gradeLink": grade_link}
-        return overall_grades
+            course_id = self.__get_url_parameter(grade_link, "id")[0]
+            averages[course_name] = {
+                "courseLink": urljoin(self.url, f"course/view.php?id={course_id}"),
+                "gradeLink": grade_link,
+                "grade": grade,
+                "rank": rank,
+            }
+        return averages
     
     def get_grades(self, grade_url):
         grade_page = self.session.get(grade_url).content
@@ -98,8 +116,13 @@ class MoodleWrapper():
                 grades[grade_item] = {"grade": grade, "letterGrade": letter_grade, "rank": rank}
         return grades
 
-def display_overall_grades(overall_grades):
-    for key, value in overall_grades.items():
+
+def json_to_file(filename, data):
+    with open(filename, "w") as f:
+        json.dump(data, f, indent=4)
+
+def display_averages(average):
+    for key, value in average.items():
         print(f"""
 {key}
     Grade: {value['grade']}
@@ -123,10 +146,13 @@ if __name__ == '__main__':
     #print("------------- Courses --------------")
     courses = moodleWrapper.get_courses()
     #print(courses)
-    overall_grades = moodleWrapper.get_overall_grades()
-    #print("-------------- Overall Grades --------------")
-    #print(overall_grades)
-    display_overall_grades(overall_grades)
-    grades = moodleWrapper.get_grades("https://moodle.medtech.tn/course/user.php?mode=grade&id=1690&user=1322")
-    display_grades(grades)
+    json_to_file("data/courses.json", courses)
     
+    averages = moodleWrapper.get_averages()
+    #print("-------------- Overall Grades --------------")
+    #print(average)
+    #display_averages(averages)
+    json_to_file("data/averages.json", averages)
+
+    all_grades = moodleWrapper.get_grade_items(averages)
+    json_to_file("data/grades.json", all_grades)

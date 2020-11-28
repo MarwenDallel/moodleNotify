@@ -1,3 +1,4 @@
 cookies
 *.html
-.vscode
+.vscode/
+data/
