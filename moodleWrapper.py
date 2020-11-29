@@ -9,6 +9,24 @@ from urllib3.exceptions import InsecureRequestWarning
 # Disable SSL warning due to a shitty ass SSL certificate configuration
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
+class SingletonGovt:
+    __instance__ = None
+    def __init__(self):
+        """ Constructor.
+        """
+        if SingletonGovt.__instance__ is None:
+            SingletonGovt.__instance__ = self
+        else:
+            raise Exception("You cannot create another SingletonGovt class")
+
+    @staticmethod
+    def get_instance():
+        """ Static method to fetch the current instance.
+        """
+        if not SingletonGovt.__instance__:
+            SingletonGovt()
+        return SingletonGovt.__instance__
+
 class MoodleWrapper():
     def __init__(self, url):  
         self.url = url
@@ -119,7 +137,7 @@ class MoodleWrapper():
 
 def json_to_file(filename, data):
     with open(filename, "w") as f:
-        json.dump(data, f, indent=4)
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
 def display_averages(average):
     for key, value in average.items():
