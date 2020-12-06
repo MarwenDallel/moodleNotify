@@ -2,3 +2,6 @@ cookies
 *.html
 .vscode/
 data/
+build/
+dist/
+__pycache__/
