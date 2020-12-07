@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['tray.py'],
+a = Analysis(['GUI.py'],
              pathex=['S:\\Documents\\Projects\\moodleScrapper'],
              binaries=[],
              datas=[
@@ -33,4 +33,4 @@ exe = EXE(pyz,
           upx=True,
           upx_exclude=[],
           runtime_tmpdir=None,
-          console=True , icon='assets\\moodle.ico')
+          console=False , icon='assets\\moodle.ico')

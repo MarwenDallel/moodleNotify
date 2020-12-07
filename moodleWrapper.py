@@ -5,6 +5,7 @@ import os, json, pickle, keyring, requests
 import elComparator
 from bs4 import BeautifulSoup
 from setupLogger import logger
+from keyring.backends import Windows
 from resourcePath import resource_path
 from urllib.parse import urlparse, urljoin, parse_qs
 from urllib3.exceptions import InsecureRequestWarning
@@ -70,27 +71,35 @@ class MoodleWrapper():
     def __get_token(self):
         login_page = self.session.get(self.login_url, verify=False).content
         login_token = BeautifulSoup(login_page, "html.parser").find("input", attrs={"name": "logintoken"})['value']
-        if (login_token is not None):
-            print(f"Login token retrieved: {login_token}")
+        # if (login_token is not None):
+        #     print(f"Login token retrieved: {login_token}")
         return login_token
-
-    def login(self, username, password):
+    
+    def is_logged(self):
         self.__load_cookies()
-        home_page = self.session.post(self.login_url, verify=False).content
+        home_page = self.session.get(self.login_url, verify=False).content
         login_status = BeautifulSoup(home_page, "html.parser").find("div", {"class": "logininfo"}).text
         logger.info(login_status.lower())
         if "You are not logged in." in login_status:
-            logger.info('logging in')
-            login_token = self.__get_token()
-            payload = {
-                "anchor": "",
-                "logintoken": login_token,
-                "username": username,
-                "password": password,
-                "rememberusername": "1"
-            }
-            self.session.post(self.login_url, data=payload)
-            self.__save_cookies()
+            return False
+        return True
+        
+    def login(self, username, password):
+        logger.info('logging in')
+        login_token = self.__get_token()
+        payload = {
+            "anchor": "",
+            "logintoken": login_token,
+            "username": username,
+            "password": password,
+            "rememberusername": "1"
+        }
+        home_page = self.session.post(self.login_url, verify=False, data=payload).content
+        login_status = BeautifulSoup(home_page, "html.parser").find("div", {"class": "logininfo"}).text
+        if "You are not logged in." in login_status:
+            return False
+        self.__save_cookies()
+        return True
 
     # Shows all courses on the homepage
     def get_courses(self):
@@ -153,37 +162,35 @@ COURSES_PATH = resource_path(f"{DATA_DIR}/courses.json")
 AVERAGES_PATH = resource_path(f"{DATA_DIR}/averages.json")
 GRADES_PATH = resource_path(f"{DATA_DIR}/grades.json")
 
-def run():
-    first_run = True
-    el_comparator = elComparator.Comparator()
-    
+keyring.set_keyring(Windows.WinVaultKeyring())
+
+def check_grades(moodleWrapper):
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
-    elif (os.path.exists(COURSES_PATH)
-          and os.path.exists(AVERAGES_PATH)
-          and os.path.exists(GRADES_PATH)):
-        el_comparator.old_grades = json.load(open(GRADES_PATH))
-        first_run = False
+    if not os.path.exists(GRADES_PATH):
+        return None
 
-    username = "marwen.dallel"
-    password = keyring.get_password("https://moodle.medtech.tn/", username)
-    moodleWrapper = MoodleWrapper("https://moodle.medtech.tn/")
-    moodleWrapper.login(username, password)
-    #print("------------- Courses --------------")
+    el_comparator = elComparator.Comparator()
+    el_comparator.old_grades = json.load(open(GRADES_PATH))
+
     courses = moodleWrapper.get_courses()
-    #print(courses)
     json_to_file(COURSES_PATH, courses)
 
     averages = moodleWrapper.get_averages()
-    #print("-------------- Overall Grades --------------")
-    #print(average)
-    #display_averages(averages)
     json_to_file(AVERAGES_PATH, averages)
 
     all_grades = moodleWrapper.get_grade_items(averages)
     json_to_file(GRADES_PATH, all_grades)
     
     new_grades = el_comparator.findNewGrades(all_grades)
+    return new_grades
+
+def run():
+    moodleWrapper = MoodleWrapper("https://moodle.medtech.tn/")
+    username = "marwen.dallel"
+    password = keyring.get_password("https://moodle.medtech.tn/", username)
+    
+    new_grades = check_grades(moodleWrapper)
     return new_grades
 
 if __name__ == '__main__':
