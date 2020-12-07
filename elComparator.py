@@ -42,7 +42,10 @@ class Comparator():
         for course_name, course_content in grades.items():
             for assignment_name, assignment_details in course_content['gradeDetails'].items():
                 assignment_old = self.getAssignment(course_name, assignment_name)
-                if ((assignment_old == None and assignment_details['grade'] != "-") 
-                    or (assignment_old['grade'] == "-" and assignment_details['grade'] != "-")):
-                    courses[course_name] = {assignment_name: assignment_details}
+                try: 
+                    if ((assignment_old == None and assignment_details['grade'] != "-") 
+                        or (assignment_old['grade'] == "-" and assignment_details['grade'] != "-")):
+                        courses[course_name] = {assignment_name: assignment_details}
+                except:
+                    pass
         return courses

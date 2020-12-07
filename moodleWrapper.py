@@ -1,14 +1,17 @@
 #!python
 # -*- coding: utf-8 -*-
 
-import os, json, pickle, keyring, requests
+import os, json, pickle, requests
 import elComparator
 from bs4 import BeautifulSoup
 from setupLogger import logger
-from keyring.backends import Windows
-from resourcePath import resource_path
 from urllib.parse import urlparse, urljoin, parse_qs
 from urllib3.exceptions import InsecureRequestWarning
+
+DATA_DIR = "./data"
+COURSES_PATH = f"{DATA_DIR}/courses.json"
+AVERAGES_PATH = f"{DATA_DIR}/averages.json"
+GRADES_PATH = f"{DATA_DIR}/grades.json"
 
 def json_to_file(filename, data):
     with open(filename, "w") as f:
@@ -60,12 +63,12 @@ class MoodleWrapper():
     def __load_cookies(self):
         if os.path.exists('cookies'):
             logger.info('loading cookies')
-            with open(resource_path('cookies'), 'rb') as f:
+            with open('cookies', 'rb') as f:
                 self.session.cookies.update(pickle.load(f))
 
     def __save_cookies(self):
         logger.info('saving cookies')
-        with open(resource_path('cookies'), 'wb') as f:
+        with open('cookies', 'wb') as f:
             pickle.dump(self.session.cookies, f)
 
     def __get_token(self):
@@ -149,49 +152,49 @@ class MoodleWrapper():
         grades = {}
         for tr in soup.select("table[class*=user-grade] > tbody > tr"):
             a = tr.select_one("th > a")
+            span = tr.select_one("th > span")
             if a:
                 grade_item = a.text.strip()
                 grade = tr.select_one("td[headers*=grade]").text.strip()
                 letter_grade = tr.select_one("td[headers*=lettergrade]").text.strip()
                 rank = tr.select_one("td[headers*=rank]").text.strip()
                 grades[grade_item] = {"grade": grade, "letterGrade": letter_grade, "rank": rank}
+            elif span:
+                grade_item = span.text.strip()
+                grade = tr.select_one("td[headers*=grade]").text.strip()
+                letter_grade = tr.select_one("td[headers*=lettergrade]").text.strip()
+                rank = tr.select_one("td[headers*=rank]").text.strip()
+                grades[grade_item] = {"grade": grade, "letterGrade": letter_grade, "rank": rank}
+                
         return grades
-
-DATA_DIR = resource_path("./data")
-COURSES_PATH = resource_path(f"{DATA_DIR}/courses.json")
-AVERAGES_PATH = resource_path(f"{DATA_DIR}/averages.json")
-GRADES_PATH = resource_path(f"{DATA_DIR}/grades.json")
-
-keyring.set_keyring(Windows.WinVaultKeyring())
-
-def check_grades(moodleWrapper):
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-    if not os.path.exists(GRADES_PATH):
-        return None
-
-    el_comparator = elComparator.Comparator()
-    el_comparator.old_grades = json.load(open(GRADES_PATH))
-
-    courses = moodleWrapper.get_courses()
-    json_to_file(COURSES_PATH, courses)
-
-    averages = moodleWrapper.get_averages()
-    json_to_file(AVERAGES_PATH, averages)
-
-    all_grades = moodleWrapper.get_grade_items(averages)
-    json_to_file(GRADES_PATH, all_grades)
     
-    new_grades = el_comparator.findNewGrades(all_grades)
-    return new_grades
+    @staticmethod
+    def init(moodleWrapper):
+        if not os.path.exists(DATA_DIR):
+            os.makedirs(DATA_DIR)
 
-def run():
-    moodleWrapper = MoodleWrapper("https://moodle.medtech.tn/")
-    username = "marwen.dallel"
-    password = keyring.get_password("https://moodle.medtech.tn/", username)
-    
-    new_grades = check_grades(moodleWrapper)
-    return new_grades
+        courses = moodleWrapper.get_courses()
+        json_to_file(COURSES_PATH, courses)
 
-if __name__ == '__main__':
-    run()
+        averages = moodleWrapper.get_averages()
+        json_to_file(AVERAGES_PATH, averages)
+
+        all_grades = moodleWrapper.get_grade_items(averages)
+        json_to_file(GRADES_PATH, all_grades)
+
+    @staticmethod
+    def check_grades(moodleWrapper):
+        el_comparator = elComparator.Comparator()
+        el_comparator.old_grades = json.load(open(GRADES_PATH))
+        
+        courses = moodleWrapper.get_courses()
+        json_to_file(COURSES_PATH, courses)
+
+        averages = moodleWrapper.get_averages()
+        json_to_file(AVERAGES_PATH, averages)
+
+        all_grades = moodleWrapper.get_grade_items(averages)
+        json_to_file(GRADES_PATH, all_grades)
+
+        new_grades = el_comparator.findNewGrades(all_grades)
+        return new_grades

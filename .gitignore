@@ -1,8 +1,12 @@
-cookies
-*.html
 .vscode/
 data/
 build/
 dist/
 __pycache__/
+
+# Files
+cookies
+*.html
 moodleScrapper.log
+installer.exe
+installer.ifp

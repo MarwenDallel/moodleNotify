@@ -5,12 +5,11 @@ from PySide2.QtWidgets import QAction, QApplication, QCheckBox, QDialog, QGridLa
 from PySide2.QtCore import QSize, QTimer
 from PySide2 import QtGui
 from setupLogger import logger
-from resourcePath import resource_path
-from moodleWrapper import MoodleWrapper, check_grades
+from moodleWrapper import MoodleWrapper
 import os
 
 def get_icon(path):
-    return QtGui.QIcon(resource_path(path))
+    return QtGui.QIcon(path)
 
 class Login(QDialog):
     def __init__(self, moodleWrapper, parent=None):
@@ -41,46 +40,26 @@ class Login(QDialog):
         
         self.moodleWrapper = moodleWrapper
 
-    # def login_ui(self, central_widget):
-    #     grid_layout = QGridLayout()
-    #     central_widget.setLayout(grid_layout)   # Set the layout into the central widget
-
-    #     label_name = QLabel('Username')
-    #     label_password = QLabel('Password')
-    #     button_login = QPushButton('Login')
-
-    #     self.lineEdit_username = QLineEdit()
-    #     self.lineEdit_password = QLineEdit()
-
-    #     self.lineEdit_username.setPlaceholderText("Please enter your username")
-    #     self.lineEdit_password.setPlaceholderText('Please enter your password')
-    #     self.lineEdit_password.setEchoMode(QLineEdit.EchoMode.Password)
-
-    #     button_login.clicked.connect(self.check_password)
-        
-    #     grid_layout.addWidget(label_name, 0, 0)
-    #     grid_layout.addWidget(self.lineEdit_username, 0, 1)
-    #     grid_layout.addWidget(label_password, 1, 0)
-    #     grid_layout.addWidget(self.lineEdit_password, 1, 1)
-    #     grid_layout.addWidget(button_login, 2, 0, 1, 2)
-
     def handleLogin(self):
         is_logged = self.moodleWrapper.login(self.text_name.text(), self.text_pass.text())
         if is_logged:
+            logger.info('initializing scrapper')
+            MoodleWrapper.init(self.moodleWrapper)
             self.accept()
         else:
             QMessageBox.warning(
                 self, 'Error', 'Bad user or password')
+
 class SystemTrayIcon(QSystemTrayIcon):    
     # Override the class constructor
     def __init__(self, icon, parent, moodleWrapper):
         # Be sure to call the super class method
         QSystemTrayIcon.__init__(self, icon, parent)
-        self.setToolTip(f'MoodleScrapper v1.1')
+        self.setToolTip('MoodleScrapper v2.2')
         self.moodleWrapper = moodleWrapper
         self.monitor_status = True
         self.systray_ui()
-        
+
     def systray_ui(self):
         # Init QSystemTrayIcon
         '''
@@ -107,6 +86,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.monitor_action.setIcon(get_icon("assets/monitoring_on.ico"))
         
         logger.info('started monitoring Moodle')
+                
         self.start_timer()
 
         self.setContextMenu(tray_menu)
@@ -123,7 +103,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         os.system('calc')
         
     def start_timer(self):
-        self.timer.start(10000)
+        self.timer.start(1800000)
 
     def end_timer(self):
         self.timer.stop()
@@ -142,16 +122,17 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.monitor_action.setIcon(self.get_monitoring_icon())
 
     def show_changes(self):
-        new_grades = check_grades(self.moodleWrapper)
+        logger.info('checking for changes')
+        new_grades = MoodleWrapper.check_grades(self.moodleWrapper)
         if new_grades:
             self.showMessage('MoodleScrapper', 'New grades have been found!', msecs=1000)
-            log_message = ""
+            logger.info('found new grades')
             for course_name, grade_details in new_grades.items():
-                log_message += f"Course: {course_name}\n"
+                log_message = f"course: {course_name}\n"
                 for k, v in grade_details.items():
-                    log_message += f"\t{k}:{v}\n"
-            logger.info(log_message.lower())    
-    
+                    log_message += f"\t{k}: {v}\n"
+                logger.info(log_message)
+
 if __name__ == "__main__":
     import sys
     moodleWrapper = MoodleWrapper("https://moodle.medtech.tn/")
