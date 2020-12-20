@@ -1,8 +1,13 @@
 import logging
+import os
+
+if not os.path.exists('logs/'):
+    os.mkdir('logs/')
 
 logging.basicConfig(
-    filename="moodleNotify.log",
+    filename="logs/moodleNotify.log",
     level=logging.DEBUG,
     format="%(asctime)s %(name)s %(levelname)s:%(message)s",
 )
+
 logger = logging.getLogger("moodleNotify")

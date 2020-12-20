@@ -3,10 +3,11 @@
 block_cipher = None
 
 
-a = Analysis(['moodleNotifyUI.py'],
-             pathex=['S:\\Documents\\Projects\\moodleNotify'],
-             binaries=[],
-    datas=[("./assets", "assets")],
+a = Analysis(
+    ['moodleNotify.py'],
+    pathex=['E:\\Projects\\moodleNotify'],
+    binaries=[],
+    datas=[('assets/', 'assets')],
     hiddenimports=[],
     hookspath=[],
     runtime_hooks=[],
@@ -14,21 +15,22 @@ a = Analysis(['moodleNotifyUI.py'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
-    noarchive=False,
+    noarchive=False
 )
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure, a.zipped_data,
+             cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
     [],
     exclude_binaries=True,
-    name="moodleNotify",
+    name='moodleNotify',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     console=False,
-    icon="assets\\moodle.ico",
+    icon="assets/moodle.ico"
 )
 coll = COLLECT(
     exe,
@@ -38,5 +40,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name="moodleNotify",
+    name="moodleNotify"
 )

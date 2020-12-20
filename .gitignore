@@ -3,11 +3,12 @@
 data/
 build/
 dist/
+venv/
 __pycache__/
 
 # Files
-cookies
 *.html
 *.log
+cookies.bin
 installer.exe
 installer.ifp

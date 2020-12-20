@@ -1,32 +1,32 @@
 class Comparator:
     def __init__(self):
-        self.__old_grades = None
-        self.__old_courses = None
-        self.__old_averages = None
+        self._old_grades = None
+        self._old_courses = None
+        self._old_averages = None
 
     @property
     def old_grades(self):
-        return self.__old_grades
+        return self._old_grades
 
     @old_grades.setter
     def old_grades(self, value):
-        self.__old_grades = value
+        self._old_grades = value
 
     @property
     def old_courses(self):
-        return self.__old_courses
+        return self._old_courses
 
     @old_courses.setter
     def old_courses(self, value):
-        self.__old_courses = value
+        self._old_courses = value
 
     @property
     def old_averages(self):
-        return self.__old_averages
+        return self._old_averages
 
     @old_averages.setter
     def old_averages(self, value):
-        self.__old_averages = value
+        self._old_averages = value
 
     def get_assignment(self, course_name, assignment_name):
         if assignment_name in self.old_grades[course_name]["gradeDetails"]:
