@@ -67,7 +67,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.updater.check_update()
 
     def start_timer(self):
-        self.timer.start(60000)
+        self.timer.start(1800000)
 
     def end_timer(self):
         self.timer.stop()

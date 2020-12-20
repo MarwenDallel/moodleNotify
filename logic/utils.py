@@ -4,7 +4,7 @@ from urllib.parse import urlparse, parse_qs
 from PySide2 import QtGui
 
 APP_NAME = "moodleNotify"
-VERSION = 2.2
+VERSION = 2.3
 MOODLE_URL = "https://moodle.medtech.tn/"
 RELEASE_URL = "https://api.github.com/repos/MarwenDallel/moodleNotify/releases/latest"
 
