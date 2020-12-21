@@ -21,7 +21,8 @@ class SystemTrayIcon(QSystemTrayIcon):
 
         self.setToolTip(f"moodleNotify v{str(self.version)}")
 
-        self.timer = QTimer()
+        self.session_update_timer = QTimer()
+        self.show_changes_timer = QTimer()
         self.tray_menu = QMenu()
 
         self.monitor_action = QAction("Disable Monitoring", self)
@@ -39,7 +40,9 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.monitor_action.triggered.connect(self.monitoring)
         self.update_action.triggered.connect(self.check_update)
         self.quit_action.triggered.connect(lambda: sys.exit())
-        self.timer.timeout.connect(self.show_changes)
+
+        self.session_update_timer.timeout.connect(self.session_update)
+        self.show_changes_timer.timeout.connect(self.show_changes)
 
         self.tray_menu.addAction(self.monitor_action)
         self.tray_menu.addAction(self.update_action)
@@ -51,7 +54,8 @@ class SystemTrayIcon(QSystemTrayIcon):
 
         logger.info("started monitoring Moodle")
 
-        self.start_timer()
+        self.start_session_update_timer()
+        self.start_check_grades_timer()
 
         self.setContextMenu(self.tray_menu)
         self.show()
@@ -59,18 +63,23 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.showMessage(
             self.app_name, "Monitoring enabled", QSystemTrayIcon.Information, 1000
         )
-        logger.info("initializing scrapper")
-        self.moodle_scrapper.init()
 
     def check_update(self):
         logger.info("checking updates")
         self.updater.check_update()
 
-    def start_timer(self):
-        self.timer.start(1800000)
+    def start_session_update_timer(self):
+        self.session_update_timer.start(900000)
 
-    def end_timer(self):
-        self.timer.stop()
+    def start_check_grades_timer(self):
+        self.show_changes()
+        self.show_changes_timer.start(1800000)
+
+    def end_session_update_timer(self):
+        self.session_update_timer.stop()
+
+    def end_check_grades_timer(self):
+        self.show_changes_timer.stop()
 
     def get_monitoring_status(self):
         return "Disable Monitoring" if self.monitor_status else "Enable Monitoring"
@@ -84,10 +93,13 @@ class SystemTrayIcon(QSystemTrayIcon):
 
     def monitoring(self):
         logger.info(self.get_monitoring_status().lower())
-        self.end_timer() if self.monitor_status else self.start_timer()
+        self.end_check_grades_timer() if self.monitor_status else self.start_check_grades_timer()
         self.monitor_status = not self.monitor_status
         self.monitor_action.setText(self.get_monitoring_status())
         self.monitor_action.setIcon(self.get_monitoring_icon())
+
+    def session_update(self):
+        self.moodle_scrapper.session_update()
 
     def show_changes(self):
         logger.info("checking for changes")

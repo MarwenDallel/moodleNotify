@@ -19,6 +19,14 @@ class MoodleParser:
         return parse
 
     @classmethod
+    def parse_session_status(cls, response):
+        def parse(self):
+            session_status = response(self).json()
+            return session_status[0]['data']['timeremaining']
+
+        return parse
+
+    @classmethod
     def parse_courses(cls, response):
         def parse(self):
             soup = BeautifulSoup(response(self).content, cls.parser)

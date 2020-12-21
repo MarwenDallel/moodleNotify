@@ -1,6 +1,7 @@
 import json
 import os
 import pickle
+import re
 from urllib.parse import urljoin
 
 import requests
@@ -37,6 +38,7 @@ class MoodleScrapper:
     def __init__(self, url):
         self.url = url
         self.login_url = urljoin(self.url, "login/index.php")
+        self.service_url = urljoin(self.url, "lib/ajax/service.php")
         self.averages_url = urljoin(self.url, "grade/report/overview/index.php")
         self.headers = {
             "DNT": "1",
@@ -50,7 +52,14 @@ class MoodleScrapper:
         self.parser = "html.parser"
         self.session = requests.Session()
         self.session.headers.update(self.headers)
-        self.cookies_path = 'cookies.bin'
+        self.cookies_path = "cookies.bin"
+
+        self.session_params = dict(info="core_session_time_remaining")
+        self.session_data = '[{"index":0,"methodname":"core_session_time_remaining","args":{}}]'
+
+        self.session_key = None
+        self.session_regex = r'"{0}login/logout.php\?sesskey=(.*)"'.format(url)
+        self.session_key_pattern = re.compile(self.session_regex)
 
     def __load_cookies(self):
         if os.path.exists(self.cookies_path):
@@ -73,15 +82,16 @@ class MoodleScrapper:
     def is_logged(self):
         self.__load_cookies()
         home_page = self.session.get(self.login_url, verify=False).content
-        login_status = (
-            BeautifulSoup(home_page, self.parser).find(
-                "div", {"class": "logininfo"}
-            ).text
-        )
+        soup = BeautifulSoup(home_page, self.parser)
+        login_info = soup.find("div", {"class": "logininfo"})
+        login_status = login_info.text.lower()
         logger.info(login_status.lower())
-        if "You are not logged in." in login_status:
+        if "you are not logged in" in login_status:
             return False
-        return True
+        else:
+            self.session_key = self.session_key_pattern.search(str(login_info)).group(1)
+            self.session_params.update(dict(sesskey=self.session_key))
+            return True
 
     def login(self, username, password):
         logger.info("logging in")
@@ -96,11 +106,28 @@ class MoodleScrapper:
         ).content
         soup = BeautifulSoup(home_page, self.parser)
         login_info = soup.find("div", {"class": "logininfo"})
-        login_status = login_info.text
-        if "You are not logged in." in login_status:
+        login_status = login_info.text.lower()
+        self.session_key = self.session_key_pattern.search(str(login_info)).group(1)
+        self.session_params.update(dict(sesskey=self.session_key))
+        if "you are not logged in." in login_status:
             return False
         self.__save_cookies()
         return True
+
+    @MoodleParser.parse_session_status
+    @required_login
+    def get_session_status(self):
+        logger.info("retrieve session")
+        params = self.session_params.copy()
+        params.update({"nosessionupdate": "true"})
+        return self.session.post(self.service_url, params=params, data=self.session_data)
+
+    @required_login
+    def session_update(self):
+        logger.info("refreshing session")
+        params = self.session_params.copy()
+        params.update({"sessionupdate": "true"})
+        return self.session.post(self.service_url, params=params, data=self.session_data)
 
     @MoodleParser.parse_courses
     @required_login
@@ -126,30 +153,20 @@ class MoodleScrapper:
         logger.info("retrieving grades")
         return averages
 
-    def init(self):
+    def check_grades(self, comparator):
+        new_grades = None
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
 
         courses = self.get_courses()
         json_to_file(COURSES_PATH, courses)
-
         averages = self.get_averages()
         json_to_file(AVERAGES_PATH, averages)
-
         all_grades = self.get_grade_items(averages)
+
+        if os.path.exists(GRADES_PATH):
+            comparator.old_grades = json.load(open(GRADES_PATH))
+            new_grades = comparator.find_new_grades(all_grades)
+
         json_to_file(GRADES_PATH, all_grades)
-
-    def check_grades(self, comparator):
-        comparator.old_grades = json.load(open(GRADES_PATH))
-
-        courses = self.get_courses()
-        json_to_file(COURSES_PATH, courses)
-
-        averages = self.get_averages()
-        json_to_file(AVERAGES_PATH, averages)
-
-        all_grades = self.get_grade_items(averages)
-        json_to_file(GRADES_PATH, all_grades)
-
-        new_grades = comparator.find_new_grades(all_grades)
         return new_grades
