@@ -79,6 +79,10 @@ class MoodleScrapper:
         )["value"]
         return login_token
 
+    def __set_session_key(self, login_info):
+        self.session_key = self.session_key_pattern.search(str(login_info)).group(1)
+        self.session_params.update(dict(sesskey=self.session_key))
+
     def is_logged(self):
         self.__load_cookies()
         home_page = self.session.get(self.login_url, verify=False).content
@@ -89,8 +93,7 @@ class MoodleScrapper:
         if "you are not logged in" in login_status:
             return False
         else:
-            self.session_key = self.session_key_pattern.search(str(login_info)).group(1)
-            self.session_params.update(dict(sesskey=self.session_key))
+            self.__set_session_key(login_info)
             return True
 
     def login(self, username, password):
@@ -107,9 +110,8 @@ class MoodleScrapper:
         soup = BeautifulSoup(home_page, self.parser)
         login_info = soup.find("div", {"class": "logininfo"})
         login_status = login_info.text.lower()
-        self.session_key = self.session_key_pattern.search(str(login_info)).group(1)
-        self.session_params.update(dict(sesskey=self.session_key))
-        if "you are not logged in." in login_status:
+        self.__set_session_key(login_info)
+        if "you are not logged in" in login_status:
             return False
         self.__save_cookies()
         return True
@@ -132,7 +134,6 @@ class MoodleScrapper:
     @MoodleParser.parse_courses
     @required_login
     def get_courses(self):
-        self.__load_cookies()
         logger.info("retrieving courses")
         return self.session.get(self.url)
 
