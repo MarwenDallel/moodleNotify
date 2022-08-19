@@ -32,7 +32,7 @@ Before opening any issues, please consider attaching the log available file at `
 - [ ] Rewrite HTTP decorators as _Requests_ hooks.
 
 ## Disclaimer
-This application is not endorsed or affliated with Moodle™. The usage of this application enables you to receive system notifications about changes in your grades by scraping data from a hosted Moodle platform. The software is provided as is and contains material that is protecteed by Moodle's trademark. The use of the name and logo is in line with the [Allowed uses of "Moodle™"](https://moodle.com/trademarks/).
+This application is not endorsed or affliated with Moodle™. The usage of this application enables you to receive system notifications about changes in your grades by scraping data from a hosted Moodle platform. The software is provided as is and contains material that is protected by Moodle's trademark. The use of the name and logo is in line with the [Allowed uses of "Moodle™"](https://moodle.com/trademarks/).
 
 ## Legal Warning
 If you plan on releasing a commercial version of this software you need to consider that Moodle logos can only be included in non-commercial software.
